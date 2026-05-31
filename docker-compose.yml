@@ -1,0 +1,50 @@
+services:
+  database:
+    image: alpine:3.20
+    command: ["sh", "-c", "mkdir -p /data && touch /data/agentops.db && tail -f /dev/null"]
+    volumes:
+      - agentops_sqlite:/data
+    healthcheck:
+      test: ["CMD", "test", "-f", "/data/agentops.db"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: sqlite:////data/agentops.db
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-llama3.2:3b}
+    volumes:
+      - agentops_sqlite:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8000}
+      NEXT_PUBLIC_AUTH_REQUIRED: ${NEXT_PUBLIC_AUTH_REQUIRED:-true}
+      NEXT_PUBLIC_DEMO_ROLE: ${NEXT_PUBLIC_DEMO_ROLE:-Admin}
+      AUTH_SECRET: ${AUTH_SECRET:-local-demo-auth-secret-change-before-enabling-sso}
+      AUTH_DEFAULT_ROLE: ${AUTH_DEFAULT_ROLE:-Admin}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  # Later production services:
+  # ollama:
+  #   image: ollama/ollama
+  # postgres:
+  #   image: postgres:16
+  # redis:
+  #   image: redis:7
+
+volumes:
+  agentops_sqlite:

@@ -10,7 +10,7 @@ from app.agents.fraud_risk_agent import calculate_fraud_risk
 from app.agents.policy_retrieval_agent import retrieve_policy_evidence
 from app.database.audit_repository import create_approval, create_audit_log
 from app.database.db import get_db
-from app.governance.governance_gateway import evaluate_governance, mask_sensitive_fields
+from app.governance.governance_gateway import evaluate_governance
 from app.schemas.claim_schema import ClaimReviewRequest, ClaimReviewResponse
 
 router = APIRouter(prefix="/claims", tags=["claims"])
@@ -43,12 +43,10 @@ def review_claim(request: ClaimReviewRequest, db: Session = Depends(get_db)) -> 
     if governance["decision"] == "approved":
         final_status = "recommendation_allowed"
 
-    masked_request = request.model_dump()
-    masked_request["claim_text"] = mask_sensitive_fields(masked_request["claim_text"])
     create_audit_log(
         db=db,
         trace_id=trace_id,
-        user_request=masked_request,
+        user_request=request.model_dump(),
         agent_name="claim_decision_agent",
         action_requested=recommendation.recommended_action,
         agent_output=json.loads(recommendation.model_dump_json()),
@@ -66,4 +64,3 @@ def review_claim(request: ClaimReviewRequest, db: Session = Depends(get_db)) -> 
         governance=governance,
         approval_id=approval_id,
     )
-

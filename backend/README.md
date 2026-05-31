@@ -34,6 +34,7 @@ http://127.0.0.1:8000/docs
 - `POST /claims/review`
 - `GET /agents`
 - `GET /approvals/pending`
+- `GET /approvals`
 - `POST /approvals/{approval_id}/approve`
 - `POST /approvals/{approval_id}/reject`
 - `POST /approvals/{approval_id}/manual-review`
@@ -55,3 +56,13 @@ http://127.0.0.1:8000/docs
 
 Expected result: prompt injection is detected, governance blocks the action, and an audit log is saved.
 
+Approval decisions require a reviewer and a reason/comment:
+
+```json
+{
+  "reviewer_name": "Risk Reviewer",
+  "decision_comment": "Evidence is complete and risk is low."
+}
+```
+
+The approval queue stores pending, approved, rejected, and manual-review decision history, including who decided, when they decided, and the decision comment.

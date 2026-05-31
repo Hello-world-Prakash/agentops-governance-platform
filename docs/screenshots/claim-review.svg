@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#020908"/><rect x="80" y="70" width="1040" height="580" rx="8" fill="#081f1a" stroke="#22f2a6" stroke-opacity=".35"/>
+  <text x="120" y="130" fill="#22f2a6" font-family="Segoe UI,Arial" font-size="16" font-weight="700">CLAIM REVIEW</text>
+  <text x="120" y="170" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="36" font-weight="700">Governed Claim Intake</text>
+  <rect x="120" y="220" width="290" height="52" rx="8" fill="#020908" stroke="#22f2a6" stroke-opacity=".25"/><rect x="455" y="220" width="290" height="52" rx="8" fill="#020908" stroke="#22f2a6" stroke-opacity=".25"/><rect x="790" y="220" width="290" height="52" rx="8" fill="#020908" stroke="#22f2a6" stroke-opacity=".25"/>
+  <rect x="120" y="310" width="960" height="210" rx="8" fill="#020908" stroke="#22f2a6" stroke-opacity=".25"/>
+  <text x="150" y="370" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="22">Customer reports auto accident with repair estimate and police report...</text>
+  <rect x="120" y="552" width="250" height="54" rx="8" fill="#22f2a6"/>
+  <text x="154" y="587" fill="#03110d" font-family="Segoe UI,Arial" font-size="18" font-weight="700">Run Governed Review</text>
+</svg>

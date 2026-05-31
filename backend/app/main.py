@@ -3,9 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import agents, approvals, audit_logs, claims, policies
 from app.database.db import Base, engine
+from app.database.migrations import ensure_sqlite_approval_columns
 
 
 Base.metadata.create_all(bind=engine)
+ensure_sqlite_approval_columns()
 
 app = FastAPI(title="AgentOps Governance Platform", version="0.1.0")
 

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#020908"/><rect x="360" y="120" width="480" height="480" rx="8" fill="#081f1a" stroke="#22f2a6" stroke-opacity=".35"/>
+  <text x="430" y="210" fill="#22f2a6" font-family="Segoe UI,Arial" font-size="16" font-weight="700">AUTH.JS / OAUTH / SSO</text>
+  <text x="430" y="260" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="34" font-weight="700">Enterprise Login</text>
+  <text x="430" y="315" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="18">Roles map from SSO claims into RBAC permissions.</text>
+  <rect x="430" y="370" width="340" height="58" rx="8" fill="#22f2a6"/><text x="500" y="407" fill="#03110d" font-family="Segoe UI,Arial" font-size="18" font-weight="700">Sign in with OAuth</text>
+  <text x="430" y="490" fill="#ffc857" font-family="Segoe UI,Arial" font-size="18">Admin / Claims Adjuster / Risk Reviewer / Auditor / Viewer</text>
+</svg>

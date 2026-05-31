@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Activity,
   AlertTriangle,
   BadgeCheck,
   BookOpenCheck,
@@ -9,16 +8,30 @@ import {
   ClipboardList,
   FileSearch,
   Gavel,
+  KeyRound,
   Loader2,
+  LogIn,
   RefreshCw,
   ShieldCheck,
   ShieldX,
+  UserRoundCog,
 } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { hasPermission, ROLE_DESCRIPTIONS, ROLE_PERMISSIONS, type Role } from "@/lib/rbac";
+import type { AuditLog } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const AUTH_REQUIRED = process.env.NEXT_PUBLIC_AUTH_REQUIRED !== "false";
 
 type Tab = "review" | "approvals" | "audit" | "agents";
+
+type TabConfig = {
+  id: Tab;
+  label: string;
+  permission: "claims:submit" | "highRisk:approve" | "audit:view" | "agents:manage";
+  icon: React.ReactNode;
+};
 
 type ClaimReviewResponse = {
   trace_id: string;
@@ -71,33 +84,35 @@ type Approval = {
   action_requested: string;
   status: string;
   created_at: string;
-};
-
-type AuditLog = {
-  id: number;
-  trace_id: string;
-  timestamp: string;
-  user_request: {
-    customer_id?: string;
-    claim_type?: string;
-    claim_amount?: number;
-    claim_text?: string;
-  };
-  agent_name: string;
-  action_requested: string;
-  governance_decision: string;
-  policy_reasons: string[];
-  risk_score: number;
-  risk_level: string;
-  prompt_injection_detected: boolean;
-  approval_status: string;
-  final_status: string;
+  decided_at?: string | null;
+  reviewer_name?: string | null;
+  decision_comment?: string | null;
 };
 
 type AgentPolicy = {
   name: string;
   allowed_actions: string[];
 };
+
+type ApprovalBucket = "pending" | "approved" | "rejected" | "sent_to_manual_review";
+
+type ApprovalAction = "approve" | "reject" | "manual-review";
+
+type DecisionDraft = {
+  approvalId: number;
+  action: ApprovalAction;
+  comment: string;
+};
+
+type AuthSession = {
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role?: Role;
+  };
+  expires?: string;
+} | null;
 
 const samples = {
   safe: {
@@ -128,6 +143,14 @@ function percent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+function getDemoRole(): Role {
+  const configuredRole = process.env.NEXT_PUBLIC_DEMO_ROLE;
+  if (configuredRole === "Claims Adjuster" || configuredRole === "Risk Reviewer" || configuredRole === "Auditor" || configuredRole === "Read-only Viewer") {
+    return configuredRole;
+  }
+  return "Admin";
+}
+
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -150,18 +173,48 @@ export default function Home() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [agents, setAgents] = useState<AgentPolicy[]>([]);
+  const [session, setSession] = useState<AuthSession>(null);
+  const [approvalBucket, setApprovalBucket] = useState<ApprovalBucket>("pending");
+  const [decisionDraft, setDecisionDraft] = useState<DecisionDraft | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const currentRole = session?.user?.role ?? getDemoRole();
+  const permissions = ROLE_PERMISSIONS[currentRole];
+  const canSubmitClaims = hasPermission(currentRole, "claims:submit");
+  const canApproveHighRisk = hasPermission(currentRole, "highRisk:approve");
+  const canViewAudit = hasPermission(currentRole, "audit:view");
+  const canManageAgents = hasPermission(currentRole, "agents:manage");
   const visibleAuditLogs = useMemo(() => auditLogs.slice(0, 8), [auditLogs]);
+  const approvalsByStatus = useMemo(
+    () => ({
+      pending: approvals.filter((approval) => approval.status === "pending"),
+      approved: approvals.filter((approval) => approval.status === "approved"),
+      rejected: approvals.filter((approval) => approval.status === "rejected"),
+      sent_to_manual_review: approvals.filter((approval) => approval.status === "sent_to_manual_review"),
+    }),
+    [approvals],
+  );
+  const visibleApprovals = approvalsByStatus[approvalBucket];
+  const tabs: TabConfig[] = useMemo(
+    () => [
+      { id: "review", label: "Claim Review", permission: "claims:submit", icon: <FileSearch size={18} /> },
+      { id: "approvals", label: "Approvals", permission: "highRisk:approve", icon: <ClipboardCheck size={18} /> },
+      { id: "audit", label: "Audit Logs", permission: "audit:view", icon: <ClipboardList size={18} /> },
+      { id: "agents", label: "Agents & Policies", permission: "agents:manage", icon: <Gavel size={18} /> },
+    ],
+    [],
+  );
+  const allowedTabs = useMemo(() => tabs.filter((item) => hasPermission(currentRole, item.permission)), [currentRole, tabs]);
+  const activeTab = allowedTabs.some((item) => item.id === tab) ? tab : allowedTabs[0]?.id;
 
   async function refreshData() {
     setIsRefreshing(true);
     setError(null);
     try {
       const [pending, logs, agentPayload] = await Promise.all([
-        apiRequest<Approval[]>("/approvals/pending"),
+        apiRequest<Approval[]>("/approvals"),
         apiRequest<AuditLog[]>("/audit-logs"),
         apiRequest<{ agents: AgentPolicy[] }>("/agents"),
       ]);
@@ -182,8 +235,26 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        if (response.ok) {
+          setSession((await response.json()) as AuthSession);
+        }
+      } catch {
+        setSession(null);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   async function submitClaim(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canSubmitClaims) {
+      setError(`${currentRole} cannot submit claims.`);
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
@@ -206,10 +277,25 @@ export default function Home() {
     }
   }
 
-  async function updateApproval(id: number, action: "approve" | "reject" | "manual-review") {
+  async function updateApproval(id: number, action: ApprovalAction, comment: string) {
+    if (!canApproveHighRisk) {
+      setError(`${currentRole} cannot approve or reject high-risk decisions.`);
+      return;
+    }
+    if (!comment.trim()) {
+      setError("A decision reason/comment is required.");
+      return;
+    }
     setError(null);
     try {
-      await apiRequest<Approval>(`/approvals/${id}/${action}`, { method: "POST" });
+      await apiRequest<Approval>(`/approvals/${id}/${action}`, {
+        method: "POST",
+        body: JSON.stringify({
+          reviewer_name: session?.user?.email ?? session?.user?.name ?? currentRole,
+          decision_comment: comment.trim(),
+        }),
+      });
+      setDecisionDraft(null);
       await refreshData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update approval");
@@ -230,11 +316,15 @@ export default function Home() {
         </div>
 
         <nav className="nav">
-          <TabButton active={tab === "review"} icon={<FileSearch size={18} />} label="Claim Review" onClick={() => setTab("review")} />
-          <TabButton active={tab === "approvals"} icon={<ClipboardCheck size={18} />} label="Approvals" onClick={() => setTab("approvals")} />
-          <TabButton active={tab === "audit"} icon={<ClipboardList size={18} />} label="Audit Logs" onClick={() => setTab("audit")} />
-          <TabButton active={tab === "agents"} icon={<Gavel size={18} />} label="Agents & Policies" onClick={() => setTab("agents")} />
+          {allowedTabs.map((item) => (
+            <TabButton key={item.id} active={activeTab === item.id} icon={item.icon} label={item.label} onClick={() => setTab(item.id)} />
+          ))}
         </nav>
+
+        <div className="sidebarStatus">
+          <span>{AUTH_REQUIRED ? "Authenticated access" : "Demo access"}</span>
+          <strong>{currentRole}</strong>
+        </div>
 
         <div className="sidebarStatus">
           <span>API</span>
@@ -254,6 +344,17 @@ export default function Home() {
           </button>
         </header>
 
+        <section className="authStrip">
+          <div>
+            <KeyRound size={18} />
+            <span>{AUTH_REQUIRED ? "Auth.js protection enabled" : "Auth.js / OAuth / SSO scaffold is installed and disabled for local demo mode"}</span>
+          </div>
+          <Link href="/api/auth/signin" title="Open Auth.js sign-in">
+            <LogIn size={16} />
+            Sign in
+          </Link>
+        </section>
+
         {error && (
           <div className="alert" role="alert">
             <AlertTriangle size={18} />
@@ -262,13 +363,25 @@ export default function Home() {
         )}
 
         <section className="metricGrid">
-          <Metric label="Pending approvals" value={approvals.length.toString()} icon={<ClipboardCheck size={19} />} />
+          <Metric label="Pending approvals" value={approvalsByStatus.pending.length.toString()} icon={<ClipboardCheck size={19} />} />
           <Metric label="Audit records" value={auditLogs.length.toString()} icon={<ClipboardList size={19} />} />
           <Metric label="Registered agents" value={agents.length.toString()} icon={<Gavel size={19} />} />
-          <Metric label="Last decision" value={result ? titleize(result.governance.decision) : "No run yet"} icon={<Activity size={19} />} />
+          <Metric label="Active role" value={currentRole} icon={<UserRoundCog size={19} />} />
         </section>
 
-        {tab === "review" && (
+        <section className="accessPanel">
+          <div>
+            <span>Role-based access control</span>
+            <strong>{ROLE_DESCRIPTIONS[currentRole]}</strong>
+          </div>
+          <div className="chipRow">
+            {permissions.map((permission) => (
+              <span key={permission}>{permission}</span>
+            ))}
+          </div>
+        </section>
+
+        {activeTab === "review" && canSubmitClaims && (
           <section className="workspace">
             <form className="panel" onSubmit={submitClaim}>
               <div className="panelHeader">
@@ -302,7 +415,7 @@ export default function Home() {
                 <textarea value={form.claim_text} onChange={(event) => setForm({ ...form, claim_text: event.target.value })} />
               </label>
 
-              <button className="primaryButton" disabled={isSubmitting}>
+              <button className="primaryButton" disabled={isSubmitting || !canSubmitClaims}>
                 {isSubmitting ? <Loader2 className="spin" size={18} /> : <ShieldCheck size={18} />}
                 Run Governed Review
               </button>
@@ -312,34 +425,72 @@ export default function Home() {
           </section>
         )}
 
-        {tab === "approvals" && (
+        {activeTab === "approvals" && canApproveHighRisk && (
           <section className="panel">
             <div className="panelHeader">
               <div>
                 <h2>Approval Queue</h2>
-                <p>Human-in-the-loop decisions waiting for reviewer action.</p>
+                <p>Decision history for pending, approved, rejected, and manual-review approvals.</p>
               </div>
             </div>
+            <div className="approvalTabs">
+              <button className={classNames(approvalBucket === "pending" && "active")} onClick={() => setApprovalBucket("pending")}>
+                Pending approvals <span>{approvalsByStatus.pending.length}</span>
+              </button>
+              <button className={classNames(approvalBucket === "approved" && "active")} onClick={() => setApprovalBucket("approved")}>
+                Approved approvals <span>{approvalsByStatus.approved.length}</span>
+              </button>
+              <button className={classNames(approvalBucket === "rejected" && "active")} onClick={() => setApprovalBucket("rejected")}>
+                Rejected approvals <span>{approvalsByStatus.rejected.length}</span>
+              </button>
+              <button className={classNames(approvalBucket === "sent_to_manual_review" && "active")} onClick={() => setApprovalBucket("sent_to_manual_review")}>
+                Manual review items <span>{approvalsByStatus.sent_to_manual_review.length}</span>
+              </button>
+            </div>
             <div className="table">
-              {approvals.length === 0 && <EmptyState label="No pending approvals" />}
-              {approvals.map((approval) => (
-                <div className="tableRow" key={approval.id}>
-                  <span>#{approval.id}</span>
-                  <strong>{titleize(approval.action_requested)}</strong>
-                  <code>{approval.trace_id.slice(0, 8)}</code>
-                  <span>{new Date(approval.created_at).toLocaleString()}</span>
-                  <div className="rowActions">
-                    <button onClick={() => updateApproval(approval.id, "approve")}>Approve</button>
-                    <button onClick={() => updateApproval(approval.id, "reject")}>Reject</button>
-                    <button onClick={() => updateApproval(approval.id, "manual-review")}>Review</button>
+              {visibleApprovals.length === 0 && <EmptyState label={`No ${titleize(approvalBucket)} approvals`} />}
+              {visibleApprovals.map((approval) => (
+                <article className="approvalItem" key={approval.id}>
+                  <div className="approvalSummary">
+                    <span>#{approval.id}</span>
+                    <strong>{titleize(approval.action_requested)}</strong>
+                    <StatusBadge value={approval.status} />
+                    <code>{approval.trace_id.slice(0, 8)}</code>
+                    <span>Created {new Date(approval.created_at).toLocaleString()}</span>
                   </div>
-                </div>
+                  {approval.status !== "pending" && (
+                    <div className="decisionHistory">
+                      <span>Reviewed by {approval.reviewer_name ?? "Unknown reviewer"}</span>
+                      <span>{approval.decided_at ? new Date(approval.decided_at).toLocaleString() : "Decision time unavailable"}</span>
+                      <strong>{approval.decision_comment ?? "No comment recorded"}</strong>
+                    </div>
+                  )}
+                  {approval.status === "pending" && (
+                    <div className="rowActions">
+                      <button onClick={() => setDecisionDraft({ approvalId: approval.id, action: "approve", comment: "Evidence is complete and risk is low." })}>Approve</button>
+                      <button onClick={() => setDecisionDraft({ approvalId: approval.id, action: "reject", comment: "Missing repair estimate and police report." })}>Reject</button>
+                      <button onClick={() => setDecisionDraft({ approvalId: approval.id, action: "manual-review", comment: "Conflicting policy evidence." })}>Review</button>
+                    </div>
+                  )}
+                  {decisionDraft?.approvalId === approval.id && (
+                    <div className="decisionBox">
+                      <label>
+                        {titleize(decisionDraft.action)} reason/comment
+                        <textarea value={decisionDraft.comment} onChange={(event) => setDecisionDraft({ ...decisionDraft, comment: event.target.value })} />
+                      </label>
+                      <div className="rowActions">
+                        <button onClick={() => updateApproval(approval.id, decisionDraft.action, decisionDraft.comment)}>Submit Decision</button>
+                        <button onClick={() => setDecisionDraft(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </article>
               ))}
             </div>
           </section>
         )}
 
-        {tab === "audit" && (
+        {activeTab === "audit" && canViewAudit && (
           <section className="panel">
             <div className="panelHeader">
               <div>
@@ -350,7 +501,7 @@ export default function Home() {
             <div className="auditList">
               {visibleAuditLogs.length === 0 && <EmptyState label="No audit logs yet" />}
               {visibleAuditLogs.map((log) => (
-                <article className="auditItem" key={log.id}>
+                <Link className="auditItem auditLink" href={`/traces/${log.trace_id}`} key={log.id}>
                   <div className="auditTopline">
                     <StatusBadge value={log.governance_decision} />
                     <code>{log.trace_id}</code>
@@ -365,13 +516,13 @@ export default function Home() {
                     <span>{titleize(log.risk_level)} risk / {percent(log.risk_score)}</span>
                     <span>{log.prompt_injection_detected ? "Prompt injection" : "No injection"}</span>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           </section>
         )}
 
-        {tab === "agents" && (
+        {activeTab === "agents" && canManageAgents && (
           <section className="agentGrid">
             {agents.map((agent) => (
               <article className="panel" key={agent.name}>
@@ -389,6 +540,14 @@ export default function Home() {
                 </div>
               </article>
             ))}
+          </section>
+        )}
+
+        {allowedTabs.length === 0 && (
+          <section className="panel mutedPanel">
+            <ShieldCheck size={28} />
+            <h2>Dashboard Access Only</h2>
+            <p>Your current role can view posture metrics but cannot perform workflow actions.</p>
           </section>
         )}
       </section>

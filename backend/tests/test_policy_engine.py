@@ -12,6 +12,5 @@ def test_low_confidence_requires_manual_review():
 
 
 def test_high_claim_amount_requires_approval():
-    result = evaluate_policy("claim_decision_agent", "approve_claim", {"claim_amount": 6000, "confidence_score": 0.9})
+    result = evaluate_policy("claim_decision_agent", "recommend_approve", {"claim_amount": 6000, "confidence_score": 0.9})
     assert result["decision"] == "human_approval_required"
-

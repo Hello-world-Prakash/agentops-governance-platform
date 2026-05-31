@@ -1,9 +1,11 @@
 import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
 from app.database.models import Approval, AuditLog
+from app.governance.pii_detector import mask_pii
 
 
 def create_audit_log(
@@ -18,12 +20,14 @@ def create_audit_log(
     final_status: str,
 ) -> AuditLog:
     risk = governance["risk"]
+    masked_user_request = mask_pii(user_request)
+    masked_agent_output = mask_pii(agent_output)
     row = AuditLog(
         trace_id=trace_id,
-        user_request=json.dumps(user_request),
+        user_request=json.dumps(masked_user_request),
         agent_name=agent_name,
         action_requested=action_requested,
-        agent_output=json.dumps(agent_output),
+        agent_output=json.dumps(masked_agent_output),
         governance_decision=str(governance["decision"]),
         policy_reasons=json.dumps(governance["policy_reasons"]),
         risk_score=float(risk["risk_score"]),
@@ -58,12 +62,21 @@ def list_pending_approvals(db: Session) -> List[Approval]:
     return db.query(Approval).filter(Approval.status == "pending").all()
 
 
-def update_approval_status(db: Session, approval_id: int, status: str) -> Optional[Approval]:
+def list_approvals(db: Session, status: Optional[str] = None) -> List[Approval]:
+    query = db.query(Approval)
+    if status:
+        query = query.filter(Approval.status == status)
+    return query.order_by(Approval.created_at.desc()).all()
+
+
+def update_approval_status(db: Session, approval_id: int, status: str, reviewer_name: str, decision_comment: str) -> Optional[Approval]:
     row = db.query(Approval).filter(Approval.id == approval_id).first()
     if row is None:
         return None
     row.status = status
+    row.reviewer_name = reviewer_name
+    row.decision_comment = decision_comment
+    row.decided_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
     return row
-

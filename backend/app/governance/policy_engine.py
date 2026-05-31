@@ -33,7 +33,7 @@ def evaluate_policy(agent_name: str, action_requested: str, context: Dict[str, o
     if action_requested == "deny_claim":
         decision = "human_approval_required"
         reasons.append("Final claim denial requires human approval")
-    if action_requested == "approve_claim" and claim_amount > 5000:
+    if action_requested in {"approve_claim", "recommend_approve"} and claim_amount > 5000:
         decision = "human_approval_required"
         reasons.append("Claims above 5000 require human approval before approval")
     if confidence_score < 0.75:
@@ -48,4 +48,3 @@ def evaluate_policy(agent_name: str, action_requested: str, context: Dict[str, o
 
 def list_agent_policies() -> Dict[str, List[str]]:
     return AGENT_POLICIES
-

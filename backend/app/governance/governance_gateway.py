@@ -1,15 +1,13 @@
-import re
 from typing import Dict
 
+from app.governance.pii_detector import mask_pii_in_text
 from app.governance.policy_engine import evaluate_policy
 from app.governance.prompt_injection_detector import detect_prompt_injection
 from app.governance.risk_scorer import calculate_risk
 
 
 def mask_sensitive_fields(value: str) -> str:
-    value = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "***-**-****", value)
-    value = re.sub(r"\b\d{16}\b", "****-****-****-****", value)
-    return value
+    return mask_pii_in_text(value)
 
 
 def evaluate_governance(
@@ -54,4 +52,3 @@ def evaluate_governance(
         "risk": risk,
         "prompt_injection": injection,
     }
-

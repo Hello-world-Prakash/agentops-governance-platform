@@ -32,4 +32,6 @@ class Approval(Base):
     action_requested = Column(String, nullable=False)
     status = Column(String, default="pending", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
+    decided_at = Column(DateTime, nullable=True)
+    reviewer_name = Column(String, nullable=True)
+    decision_comment = Column(Text, nullable=True)

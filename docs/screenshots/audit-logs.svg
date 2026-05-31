@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#020908"/><text x="80" y="92" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="38" font-weight="700">Audit Logs</text>
+  <g fill="#081f1a" stroke="#22f2a6" stroke-opacity=".28">
+    <rect x="80" y="140" width="1040" height="110" rx="8"/><rect x="80" y="280" width="1040" height="110" rx="8"/><rect x="80" y="420" width="1040" height="110" rx="8"/>
+  </g>
+  <g font-family="Segoe UI,Arial"><text x="112" y="190" fill="#22f2a6" font-size="18" font-weight="700">approved</text><text x="112" y="222" fill="#8fb6aa" font-size="16">Trace id, masked request, risk score, prompt-injection status</text><text x="112" y="330" fill="#ffb4ba" font-size="18" font-weight="700">blocked</text><text x="112" y="362" fill="#8fb6aa" font-size="16">Prompt injection detected and audit record persisted</text><text x="112" y="470" fill="#ffc857" font-size="18" font-weight="700">human approval required</text><text x="112" y="502" fill="#8fb6aa" font-size="16">High-value decision routed to approval queue</text></g>
+</svg>

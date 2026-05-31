@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#020908"/><text x="80" y="92" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="36" font-weight="700">Trace Timeline</text>
+  <rect x="80" y="135" width="300" height="500" rx="8" fill="#081f1a" stroke="#22f2a6" stroke-opacity=".28"/><rect x="420" y="135" width="700" height="500" rx="8" fill="#081f1a" stroke="#22f2a6" stroke-opacity=".28"/>
+  <g stroke="#22f2a6" stroke-opacity=".4"><line x1="470" y1="210" x2="470" y2="570"/></g>
+  <g fill="#22f2a6"><circle cx="470" cy="210" r="8"/><circle cx="470" cy="282" r="8"/><circle cx="470" cy="354" r="8"/><circle cx="470" cy="426" r="8"/><circle cx="470" cy="498" r="8"/><circle cx="470" cy="570" r="8"/></g>
+  <g fill="#e7fff7" font-family="Segoe UI,Arial" font-size="22" font-weight="700"><text x="500" y="218">User Request</text><text x="500" y="290">Agent Output</text><text x="500" y="362">Retrieved Evidence</text><text x="500" y="434">Risk Score</text><text x="500" y="506">Governance Decision</text><text x="500" y="578">Final Status</text></g>
+</svg>
