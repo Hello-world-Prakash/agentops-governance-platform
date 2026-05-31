@@ -18,6 +18,12 @@ AgentOps Governance Platform is an AgentOps governance control plane for regulat
 ### Approval Queue
 ![Approval Queue](docs/screenshots/approval-queue.svg)
 
+### Evaluation Center
+![Evaluation Center](docs/screenshots/evaluation-center.svg)
+
+### Red Team Scenarios
+![Red Team Scenarios](docs/screenshots/red-team-scenarios.svg)
+
 ### Trace Timeline
 ![Trace Timeline](docs/screenshots/trace-timeline.svg)
 

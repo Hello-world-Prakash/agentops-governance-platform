@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#020908"/>
+  <path d="M0 560 C180 500 320 610 500 520 S840 430 1200 300" fill="none" stroke="#22f2a6" stroke-opacity=".24"/>
+  <path d="M720 40 L1030 690" stroke="#ffc857" stroke-opacity=".16"/>
+  <text x="80" y="92" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="38" font-weight="700">Evaluation Center</text>
+  <text x="80" y="126" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="18">Governance regression suite and control effectiveness metrics</text>
+  <g fill="#081f1a" stroke="#22f2a6" stroke-opacity=".28">
+    <rect x="80" y="162" width="160" height="92" rx="8"/>
+    <rect x="260" y="162" width="160" height="92" rx="8"/>
+    <rect x="440" y="162" width="160" height="92" rx="8"/>
+    <rect x="620" y="162" width="160" height="92" rx="8"/>
+    <rect x="800" y="162" width="160" height="92" rx="8"/>
+    <rect x="980" y="162" width="140" height="92" rx="8"/>
+  </g>
+  <text x="108" y="199" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="13" font-weight="700">PASS RATE</text>
+  <text x="108" y="232" fill="#22f2a6" font-family="Segoe UI,Arial" font-size="31" font-weight="700">94%</text>
+  <text x="288" y="199" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="13" font-weight="700">FAILED</text>
+  <text x="288" y="232" fill="#ff5f6d" font-family="Segoe UI,Arial" font-size="31" font-weight="700">2</text>
+  <text x="468" y="199" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="13" font-weight="700">CRITICAL</text>
+  <text x="468" y="232" fill="#ffc857" font-family="Segoe UI,Arial" font-size="31" font-weight="700">0</text>
+  <text x="648" y="199" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="13" font-weight="700">PROMPT BLOCKS</text>
+  <text x="648" y="232" fill="#22f2a6" font-family="Segoe UI,Arial" font-size="31" font-weight="700">100%</text>
+  <text x="828" y="199" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="13" font-weight="700">PII MASKING</text>
+  <text x="828" y="232" fill="#22f2a6" font-family="Segoe UI,Arial" font-size="31" font-weight="700">100%</text>
+  <text x="1008" y="199" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="13" font-weight="700">ROUTING</text>
+  <text x="1008" y="232" fill="#22f2a6" font-family="Segoe UI,Arial" font-size="31" font-weight="700">98%</text>
+  <g fill="#081f1a" stroke="#22f2a6" stroke-opacity=".28">
+    <rect x="80" y="292" width="250" height="166" rx="8"/>
+    <rect x="350" y="292" width="250" height="166" rx="8"/>
+    <rect x="620" y="292" width="250" height="166" rx="8"/>
+    <rect x="890" y="292" width="230" height="166" rx="8"/>
+  </g>
+  <text x="108" y="335" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="20" font-weight="700">Pass vs Fail</text>
+  <rect x="108" y="374" width="168" height="28" rx="8" fill="#22f2a6"/><rect x="276" y="374" width="26" height="28" rx="8" fill="#ff5f6d"/>
+  <text x="378" y="335" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="20" font-weight="700">Failures by Category</text>
+  <rect x="378" y="374" width="150" height="10" rx="5" fill="#ff5f6d"/><rect x="378" y="404" width="92" height="10" rx="5" fill="#ffc857"/>
+  <text x="648" y="335" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="20" font-weight="700">Risk Distribution</text>
+  <rect x="648" y="374" width="174" height="10" rx="5" fill="#22f2a6"/><rect x="648" y="404" width="112" height="10" rx="5" fill="#14d6c1"/>
+  <text x="918" y="335" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="20" font-weight="700">Injection Trend</text>
+  <g fill="#22f2a6">
+    <circle cx="926" cy="382" r="7"/><circle cx="952" cy="382" r="7"/><circle cx="978" cy="382" r="7"/><circle cx="1004" cy="382" r="7"/><circle cx="1030" cy="382" r="7"/>
+  </g>
+  <rect x="80" y="500" width="1040" height="126" rx="8" fill="#081f1a" stroke="#22f2a6" stroke-opacity=".28"/>
+  <text x="108" y="546" fill="#e7fff7" font-family="Segoe UI,Arial" font-size="22" font-weight="700">Latest Test Run Results</text>
+  <text x="108" y="584" fill="#8fb6aa" font-family="Segoe UI,Arial" font-size="17">timestamp  •  test case  •  expected decision  •  actual decision  •  pass/fail  •  failure reason</text>
+</svg>
