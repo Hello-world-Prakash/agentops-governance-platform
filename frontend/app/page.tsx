@@ -357,12 +357,12 @@ export default function Home() {
                     <span>{new Date(log.timestamp).toLocaleString()}</span>
                   </div>
                   <div className="auditBody">
-                    <strong>{log.user_request.customer_id} · ${log.user_request.claim_amount}</strong>
+                    <strong>{log.user_request.customer_id} / ${log.user_request.claim_amount}</strong>
                     <span>{log.user_request.claim_text}</span>
                   </div>
                   <div className="chipRow">
                     <span>{titleize(log.action_requested)}</span>
-                    <span>{titleize(log.risk_level)} risk · {percent(log.risk_score)}</span>
+                    <span>{titleize(log.risk_level)} risk / {percent(log.risk_score)}</span>
                     <span>{log.prompt_injection_detected ? "Prompt injection" : "No injection"}</span>
                   </div>
                 </article>
@@ -457,7 +457,7 @@ function ReviewResult({ result }: { result: ClaimReviewResponse | null }) {
           <Meter label="Confidence" value={result.recommendation.confidence_score} />
         </DetailPanel>
 
-        <DetailPanel title="Risk" value={`${titleize(result.governance.risk.risk_level)} · ${percent(result.governance.risk.risk_score)}`}>
+        <DetailPanel title="Risk" value={`${titleize(result.governance.risk.risk_level)} / ${percent(result.governance.risk.risk_score)}`}>
           <ul>
             {result.governance.risk.risk_reasons.map((reason) => (
               <li key={reason}>{reason}</li>
@@ -465,7 +465,7 @@ function ReviewResult({ result }: { result: ClaimReviewResponse | null }) {
           </ul>
         </DetailPanel>
 
-        <DetailPanel title="Fraud" value={`${titleize(result.fraud.fraud_level)} · ${percent(result.fraud.fraud_score)}`}>
+        <DetailPanel title="Fraud" value={`${titleize(result.fraud.fraud_level)} / ${percent(result.fraud.fraud_score)}`}>
           <ul>
             {result.fraud.fraud_reasons.map((reason) => (
               <li key={reason}>{reason}</li>
