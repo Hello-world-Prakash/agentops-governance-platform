@@ -917,6 +917,200 @@ ul {
   gap: 0;
 }
 
+.evaluationStack {
+  display: grid;
+  gap: 18px;
+}
+
+.evalMetrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.chartPanel {
+  min-height: 220px;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.stackedChart {
+  display: grid;
+  gap: 12px;
+}
+
+.stackedBar {
+  height: 38px;
+  display: flex;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(2, 12, 10, 0.82);
+  border: 1px solid rgba(34, 242, 166, 0.16);
+}
+
+.stackedBar span {
+  min-width: 1px;
+}
+
+.chartLegend,
+.trendDots {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chartLegend span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.miniBars {
+  display: grid;
+  gap: 10px;
+}
+
+.miniBars > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.6fr) minmax(120px, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+}
+
+.miniBars span,
+.resultsHeader span,
+.resultsRow > span,
+.redTeamItem span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.miniBars div div {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(2, 12, 10, 0.82);
+  border: 1px solid rgba(34, 242, 166, 0.1);
+}
+
+.miniBars i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--green));
+  box-shadow: 0 0 18px rgba(34, 242, 166, 0.38);
+}
+
+.miniBars strong {
+  color: var(--ink);
+  font-size: 13px;
+  text-align: right;
+}
+
+.trendDots span {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 242, 166, 0.16);
+}
+
+.trendDots span.ok {
+  background: var(--green);
+  box-shadow: 0 0 16px rgba(34, 242, 166, 0.46);
+}
+
+.trendDots span.danger {
+  background: var(--red);
+  box-shadow: 0 0 16px rgba(255, 95, 109, 0.42);
+}
+
+.redTeamList,
+.resultsTable {
+  display: grid;
+  gap: 10px;
+}
+
+.redTeamItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(220px, 0.7fr) minmax(260px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(4, 18, 15, 0.64);
+}
+
+.redTeamItem > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.redTeamItem strong {
+  color: #f5fff9;
+}
+
+.redTeamItem p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.redTeamItem button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  background: rgba(9, 31, 26, 0.86);
+}
+
+.redTeamItem button:hover {
+  border-color: var(--line-strong);
+}
+
+.redTeamItem button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.resultsHeader,
+.resultsRow {
+  display: grid;
+  grid-template-columns: 150px minmax(220px, 1fr) 130px 150px 150px 80px 90px minmax(220px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.resultsHeader {
+  min-height: 38px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(34, 242, 166, 0.16);
+}
+
+.resultsRow {
+  min-height: 62px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(4, 18, 15, 0.64);
+}
+
+.resultsRow strong {
+  color: #f5fff9;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .timelineItem {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -985,8 +1179,16 @@ ul {
   }
 
   .metricGrid,
-  .workspace {
+  .workspace,
+  .evalMetrics,
+  .chartGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .redTeamItem,
+  .resultsHeader,
+  .resultsRow {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1023,7 +1225,9 @@ ul {
 
   .approvalTabs,
   .approvalSummary,
-  .decisionHistory {
+  .decisionHistory,
+  .evalMetrics,
+  .chartGrid {
     grid-template-columns: 1fr;
   }
 

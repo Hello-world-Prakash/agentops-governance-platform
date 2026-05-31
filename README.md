@@ -31,8 +31,12 @@ AgentOps Governance Platform is an AgentOps governance control plane for regulat
 
 - FastAPI backend
 - Next.js, React, and TypeScript frontend
-- SQLite-backed audit and approval persistence
-- Optional local Ollama LLM support for summaries and explanations only
+- PostgreSQL-backed audit and approval persistence in Docker Compose
+- SQLite fallback for lightweight local tests
+- Redis event bus for trace and approval events
+- SSE real-time trace streaming
+- Local Ollama/Llama support for extraction summaries and reasoning explanations only
+- LangGraph-compatible claim workflow orchestration with deterministic fallback
 - Auth.js / OAuth / future SSO scaffold
 - Role-based access control
 - Deterministic governance gateway
@@ -86,13 +90,37 @@ Services:
 
 - `backend`
 - `frontend`
-- `database`
+- `database` using PostgreSQL
+- `redis`
 
 Later-ready services are documented in `docker-compose.yml` as placeholders:
 
 - `ollama`
-- `postgres`
-- `redis`
+
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    U["Enterprise User"] --> F["Next.js Dashboard"]
+    F --> A["Auth.js / OAuth / SSO"]
+    F --> B["FastAPI Governance API"]
+    B --> O["LangGraph-compatible Workflow"]
+    O --> I["Claims Intake Agent"]
+    O --> P["Policy Retrieval Agent"]
+    O --> R["Fraud Risk Agent"]
+    O --> D["Claim Decision Agent"]
+    D --> G["Governance Gateway"]
+    G --> PI["Prompt Injection Detector"]
+    G --> RS["Risk Scorer"]
+    G --> PE["Policy Engine"]
+    G --> PM["PII Masking"]
+    PM --> PG["PostgreSQL Audit Store"]
+    G --> Q["Human Approval Queue"]
+    B --> RE["Redis Event Bus"]
+    RE --> TS["SSE Trace Streaming"]
+    F --> TS
+    O -. summaries/explanations only .-> L["Ollama / Llama"]
+```
 
 ## Trace Timeline
 
@@ -127,4 +155,3 @@ Example decision comment:
   "decision_comment": "Evidence is complete and risk is low."
 }
 ```
-

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.database.models import Approval, AuditLog
+from app.events.event_bus import publish_trace_event
 from app.governance.pii_detector import mask_pii
 
 
@@ -39,6 +40,19 @@ def create_audit_log(
     db.add(row)
     db.commit()
     db.refresh(row)
+    publish_trace_event(
+        trace_id,
+        "audit_log_created",
+        {
+            "agent_name": agent_name,
+            "action_requested": action_requested,
+            "governance_decision": row.governance_decision,
+            "risk_score": row.risk_score,
+            "risk_level": row.risk_level,
+            "approval_status": row.approval_status,
+            "final_status": row.final_status,
+        },
+    )
     return row
 
 
@@ -47,6 +61,7 @@ def create_approval(db: Session, trace_id: str, action_requested: str) -> Approv
     db.add(row)
     db.commit()
     db.refresh(row)
+    publish_trace_event(trace_id, "approval_created", {"approval_id": row.id, "action_requested": action_requested, "status": row.status})
     return row
 
 
@@ -79,4 +94,15 @@ def update_approval_status(db: Session, approval_id: int, status: str, reviewer_
     row.decided_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
+    publish_trace_event(
+        row.trace_id,
+        "approval_decided",
+        {
+            "approval_id": row.id,
+            "status": row.status,
+            "reviewer_name": row.reviewer_name,
+            "decision_comment": row.decision_comment,
+            "decided_at": row.decided_at,
+        },
+    )
     return row

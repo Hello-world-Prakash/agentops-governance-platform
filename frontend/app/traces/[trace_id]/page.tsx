@@ -3,7 +3,7 @@
 import { ArrowLeft, BadgeCheck, ClipboardList, FileText, Gavel, ShieldAlert, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { AuditLog } from "@/lib/types";
+import type { AuditLog, TraceEvent } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -22,6 +22,7 @@ function statusKind(value: string) {
 export default function TraceDetailPage({ params }: { params: Promise<{ trace_id: string }> }) {
   const [traceId, setTraceId] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditLog | null>(null);
+  const [traceEvents, setTraceEvents] = useState<TraceEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,6 +52,32 @@ export default function TraceDetailPage({ params }: { params: Promise<{ trace_id
 
     void loadTrace();
     return () => controller.abort();
+  }, [traceId]);
+
+  useEffect(() => {
+    if (!traceId) {
+      return;
+    }
+
+    const source = new EventSource(`${API_BASE}/audit-logs/${traceId}/stream`);
+    source.onmessage = (event) => {
+      try {
+        setTraceEvents((current) => [...current, JSON.parse(event.data) as TraceEvent]);
+      } catch {
+        return;
+      }
+    };
+    source.addEventListener("audit_log_created", (event) => {
+      setTraceEvents((current) => [...current, JSON.parse((event as MessageEvent).data) as TraceEvent]);
+    });
+    source.addEventListener("approval_created", (event) => {
+      setTraceEvents((current) => [...current, JSON.parse((event as MessageEvent).data) as TraceEvent]);
+    });
+    source.addEventListener("approval_decided", (event) => {
+      setTraceEvents((current) => [...current, JSON.parse((event as MessageEvent).data) as TraceEvent]);
+    });
+
+    return () => source.close();
   }, [traceId]);
 
   const timeline = useMemo(() => {
@@ -151,6 +178,10 @@ export default function TraceDetailPage({ params }: { params: Promise<{ trace_id
               <span>Final Status</span>
               <strong>{titleize(auditLog.final_status)}</strong>
             </div>
+            <div>
+              <span>Live Events</span>
+              <strong>{traceEvents.length}</strong>
+            </div>
           </aside>
 
           <section className="panel traceTimeline">
@@ -164,10 +195,19 @@ export default function TraceDetailPage({ params }: { params: Promise<{ trace_id
                 </div>
               </article>
             ))}
+            {traceEvents.length > 0 && (
+              <article className="timelineItem">
+                <div className="timelineIcon"><ShieldCheck size={18} /></div>
+                <div>
+                  <span>Real-time Stream</span>
+                  <strong>{traceEvents.length} event{traceEvents.length === 1 ? "" : "s"}</strong>
+                  <p>{traceEvents.map((event) => event.event_type).join(", ")}</p>
+                </div>
+              </article>
+            )}
           </section>
         </section>
       )}
     </main>
   );
 }
-

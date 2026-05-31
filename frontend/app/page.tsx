@@ -3,14 +3,17 @@
 import {
   AlertTriangle,
   BadgeCheck,
+  BarChart3,
   BookOpenCheck,
   ClipboardCheck,
   ClipboardList,
+  Crosshair,
   FileSearch,
   Gavel,
   KeyRound,
   Loader2,
   LogIn,
+  PlayCircle,
   RefreshCw,
   ShieldCheck,
   ShieldX,
@@ -24,12 +27,12 @@ import type { AuditLog } from "@/lib/types";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 const AUTH_REQUIRED = process.env.NEXT_PUBLIC_AUTH_REQUIRED !== "false";
 
-type Tab = "review" | "approvals" | "audit" | "agents";
+type Tab = "review" | "approvals" | "audit" | "agents" | "evaluations";
 
 type TabConfig = {
   id: Tab;
   label: string;
-  permission: "claims:submit" | "highRisk:approve" | "audit:view" | "agents:manage";
+  permission: "claims:submit" | "highRisk:approve" | "audit:view" | "agents:manage" | "evaluations:view";
   icon: React.ReactNode;
 };
 
@@ -114,6 +117,58 @@ type AuthSession = {
   expires?: string;
 } | null;
 
+type EvaluationMetrics = {
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  pass_rate: number;
+  prompt_injection_block_rate: number;
+  pii_masking_success_rate: number;
+  unauthorized_action_block_rate: number;
+  approval_routing_accuracy: number;
+  audit_completeness_score: number;
+  critical_failure_count: number;
+  failures_by_category: Record<string, number>;
+  risk_level_distribution: Record<string, number>;
+  prompt_injection_block_trend: Array<{ timestamp: string; blocked: boolean; passed: boolean }>;
+};
+
+type EvaluationRun = {
+  id: number;
+  run_type: string;
+  status: string;
+  started_at: string;
+  completed_at?: string | null;
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  critical_failure_count: number;
+};
+
+type EvaluationResult = {
+  id: number;
+  run_id: number;
+  scenario_id?: number | null;
+  test_case_name: string;
+  category: string;
+  expected_governance_decision: string;
+  actual_governance_decision: string;
+  actual_risk_level: string;
+  passed: boolean;
+  failure_reason: string;
+  created_at: string;
+};
+
+type RedTeamScenario = {
+  id: number;
+  name: string;
+  category: string;
+  input_prompt: string;
+  expected_behavior: string;
+  expected_governance_decision: string;
+  expected_risk_level: string;
+};
+
 const samples = {
   safe: {
     customer_id: "CUST-1002",
@@ -173,6 +228,11 @@ export default function Home() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [agents, setAgents] = useState<AgentPolicy[]>([]);
+  const [evaluationMetrics, setEvaluationMetrics] = useState<EvaluationMetrics | null>(null);
+  const [evaluationRuns, setEvaluationRuns] = useState<EvaluationRun[]>([]);
+  const [evaluationResults, setEvaluationResults] = useState<EvaluationResult[]>([]);
+  const [redTeamScenarios, setRedTeamScenarios] = useState<RedTeamScenario[]>([]);
+  const [runningEvaluation, setRunningEvaluation] = useState<"all" | "red-team" | number | null>(null);
   const [session, setSession] = useState<AuthSession>(null);
   const [approvalBucket, setApprovalBucket] = useState<ApprovalBucket>("pending");
   const [decisionDraft, setDecisionDraft] = useState<DecisionDraft | null>(null);
@@ -186,6 +246,8 @@ export default function Home() {
   const canApproveHighRisk = hasPermission(currentRole, "highRisk:approve");
   const canViewAudit = hasPermission(currentRole, "audit:view");
   const canManageAgents = hasPermission(currentRole, "agents:manage");
+  const canViewEvaluations = hasPermission(currentRole, "evaluations:view");
+  const canRunEvaluations = hasPermission(currentRole, "evaluations:run");
   const visibleAuditLogs = useMemo(() => auditLogs.slice(0, 8), [auditLogs]);
   const approvalsByStatus = useMemo(
     () => ({
@@ -203,6 +265,7 @@ export default function Home() {
       { id: "approvals", label: "Approvals", permission: "highRisk:approve", icon: <ClipboardCheck size={18} /> },
       { id: "audit", label: "Audit Logs", permission: "audit:view", icon: <ClipboardList size={18} /> },
       { id: "agents", label: "Agents & Policies", permission: "agents:manage", icon: <Gavel size={18} /> },
+      { id: "evaluations", label: "Evaluation Center", permission: "evaluations:view", icon: <Crosshair size={18} /> },
     ],
     [],
   );
@@ -221,6 +284,20 @@ export default function Home() {
       setApprovals(pending);
       setAuditLogs(logs);
       setAgents(agentPayload.agents);
+      if (canViewEvaluations) {
+        const [metrics, runs, scenarios] = await Promise.all([
+          apiRequest<EvaluationMetrics>("/evaluations/metrics"),
+          apiRequest<EvaluationRun[]>("/evaluations/runs"),
+          apiRequest<RedTeamScenario[]>("/red-team/scenarios"),
+        ]);
+        setEvaluationMetrics(metrics);
+        setEvaluationRuns(runs);
+        setRedTeamScenarios(scenarios);
+        if (runs[0]) {
+          const detail = await apiRequest<{ run: EvaluationRun; results: EvaluationResult[] }>(`/evaluations/runs/${runs[0].id}`);
+          setEvaluationResults(detail.results);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to refresh dashboard data");
     } finally {
@@ -299,6 +376,29 @@ export default function Home() {
       await refreshData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update approval");
+    }
+  }
+
+  async function runEvaluation(kind: "all" | "red-team", scenarioId?: number) {
+    if (!canRunEvaluations) {
+      setError(`${currentRole} cannot run governance evaluations.`);
+      return;
+    }
+    setRunningEvaluation(scenarioId ?? kind);
+    setError(null);
+    try {
+      const path = kind === "all" ? "/evaluations/run" : "/red-team/run";
+      const payload = kind === "red-team" && scenarioId ? { scenario_id: scenarioId } : undefined;
+      const runPayload = await apiRequest<{ run: EvaluationRun; results: EvaluationResult[] }>(path, {
+        method: "POST",
+        body: payload ? JSON.stringify(payload) : JSON.stringify({}),
+      });
+      setEvaluationResults(runPayload.results);
+      await refreshData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to run evaluation");
+    } finally {
+      setRunningEvaluation(null);
     }
   }
 
@@ -543,6 +643,20 @@ export default function Home() {
           </section>
         )}
 
+        {activeTab === "evaluations" && canViewEvaluations && (
+          <EvaluationCenter
+            metrics={evaluationMetrics}
+            runs={evaluationRuns}
+            results={evaluationResults}
+            scenarios={redTeamScenarios}
+            canRun={canRunEvaluations}
+            running={runningEvaluation}
+            onRunAll={() => runEvaluation("all")}
+            onRunRedTeam={() => runEvaluation("red-team")}
+            onRunScenario={(scenarioId) => runEvaluation("red-team", scenarioId)}
+          />
+        )}
+
         {allowedTabs.length === 0 && (
           <section className="panel mutedPanel">
             <ShieldCheck size={28} />
@@ -552,6 +666,215 @@ export default function Home() {
         )}
       </section>
     </main>
+  );
+}
+
+function EvaluationCenter({
+  metrics,
+  runs,
+  results,
+  scenarios,
+  canRun,
+  running,
+  onRunAll,
+  onRunRedTeam,
+  onRunScenario,
+}: {
+  metrics: EvaluationMetrics | null;
+  runs: EvaluationRun[];
+  results: EvaluationResult[];
+  scenarios: RedTeamScenario[];
+  canRun: boolean;
+  running: "all" | "red-team" | number | null;
+  onRunAll: () => void;
+  onRunRedTeam: () => void;
+  onRunScenario: (scenarioId: number) => void;
+}) {
+  const passCount = metrics?.passed_tests ?? 0;
+  const failCount = metrics?.failed_tests ?? 0;
+  const total = Math.max(passCount + failCount, 1);
+  const latestScenarioResults = useMemo(() => {
+    const byScenario = new Map<number, EvaluationResult>();
+    for (const result of results) {
+      if (result.scenario_id && !byScenario.has(result.scenario_id)) {
+        byScenario.set(result.scenario_id, result);
+      }
+    }
+    return byScenario;
+  }, [results]);
+
+  return (
+    <section className="evaluationStack">
+      <section className="panel">
+        <div className="panelHeader">
+          <div>
+            <h2>Evaluation Center</h2>
+            <p>Red-team and regression tests for the governance layer, routed through the live claim workflow.</p>
+          </div>
+          <div className="rowActions">
+            <button disabled={!canRun || running !== null} onClick={onRunAll}>
+              {running === "all" ? <Loader2 className="spin" size={16} /> : <PlayCircle size={16} />}
+              Run all evaluations
+            </button>
+            <button disabled={!canRun || running !== null} onClick={onRunRedTeam}>
+              {running === "red-team" ? <Loader2 className="spin" size={16} /> : <Crosshair size={16} />}
+              Run red-team tests
+            </button>
+          </div>
+        </div>
+
+        <div className="metricGrid evalMetrics">
+          <Metric label="Pass rate" value={percent(metrics?.pass_rate ?? 0)} icon={<BadgeCheck size={19} />} />
+          <Metric label="Failed scenarios" value={(metrics?.failed_tests ?? 0).toString()} icon={<ShieldX size={19} />} />
+          <Metric label="Critical failures" value={(metrics?.critical_failure_count ?? 0).toString()} icon={<AlertTriangle size={19} />} />
+          <Metric label="Prompt blocks" value={percent(metrics?.prompt_injection_block_rate ?? 0)} icon={<ShieldCheck size={19} />} />
+          <Metric label="PII masking" value={percent(metrics?.pii_masking_success_rate ?? 0)} icon={<KeyRound size={19} />} />
+          <Metric label="Approval routing" value={percent(metrics?.approval_routing_accuracy ?? 0)} icon={<ClipboardCheck size={19} />} />
+        </div>
+      </section>
+
+      <section className="chartGrid">
+        <ChartPanel title="Pass vs Fail" icon={<BarChart3 size={18} />}>
+          <StackedBar
+            segments={[
+              { label: "Pass", value: passCount, color: "var(--green)" },
+              { label: "Fail", value: failCount, color: "var(--red)" },
+            ]}
+            total={total}
+          />
+        </ChartPanel>
+        <ChartPanel title="Failures by Category" icon={<AlertTriangle size={18} />}>
+          <MiniBars values={metrics?.failures_by_category ?? {}} />
+        </ChartPanel>
+        <ChartPanel title="Risk Distribution" icon={<ShieldCheck size={18} />}>
+          <MiniBars values={metrics?.risk_level_distribution ?? {}} />
+        </ChartPanel>
+        <ChartPanel title="Prompt Injection Trend" icon={<Crosshair size={18} />}>
+          <div className="trendDots">
+            {(metrics?.prompt_injection_block_trend ?? []).map((item, index) => (
+              <span key={`${item.timestamp}-${index}`} className={classNames(item.blocked && item.passed ? "ok" : "danger")} title={new Date(item.timestamp).toLocaleString()} />
+            ))}
+          </div>
+        </ChartPanel>
+      </section>
+
+      <section className="panel">
+        <div className="panelHeader">
+          <div>
+            <h2>Red Team Scenarios</h2>
+            <p>Adversarial prompts expected to be blocked, masked, or routed correctly.</p>
+          </div>
+        </div>
+        <div className="redTeamList">
+          {scenarios.map((scenario) => {
+            const scenarioResult = latestScenarioResults.get(scenario.id);
+            return (
+              <article className="redTeamItem" key={scenario.id}>
+                <div>
+                  <strong>{scenario.name}</strong>
+                  <span>{titleize(scenario.category)}</span>
+                </div>
+                <p>{scenario.input_prompt}</p>
+                <p>{scenario.expected_behavior}</p>
+                <StatusBadge value={scenarioResult ? (scenarioResult.passed ? "passed" : "failed") : "not_run"} />
+                <button disabled={!canRun || running !== null} onClick={() => onRunScenario(scenario.id)}>
+                  {running === scenario.id ? <Loader2 className="spin" size={16} /> : <PlayCircle size={16} />}
+                  Run
+                </button>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panelHeader">
+          <div>
+            <h2>Test Run Results</h2>
+            <p>{runs[0] ? `Latest run #${runs[0].id} started ${new Date(runs[0].started_at).toLocaleString()}` : "No evaluation runs yet."}</p>
+          </div>
+        </div>
+        <div className="resultsTable">
+          <div className="resultsHeader">
+            <span>Timestamp</span>
+            <span>Test case</span>
+            <span>Category</span>
+            <span>Expected decision</span>
+            <span>Actual decision</span>
+            <span>Risk</span>
+            <span>Status</span>
+            <span>Failure reason</span>
+          </div>
+          {results.length === 0 && <EmptyState label="No evaluation results yet" />}
+          {results.map((result) => (
+            <div className="resultsRow" key={result.id}>
+              <span>{new Date(result.created_at).toLocaleString()}</span>
+              <strong>{result.test_case_name}</strong>
+              <span>{titleize(result.category)}</span>
+              <span>{titleize(result.expected_governance_decision)}</span>
+              <span>{titleize(result.actual_governance_decision)}</span>
+              <span>{titleize(result.actual_risk_level)}</span>
+              <StatusBadge value={result.passed ? "passed" : "failed"} />
+              <span>{result.failure_reason || "None"}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function ChartPanel({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <article className="panel chartPanel">
+      <div className="panelHeader compact">
+        <div>
+          <h2>{title}</h2>
+        </div>
+        {icon}
+      </div>
+      {children}
+    </article>
+  );
+}
+
+function StackedBar({ segments, total }: { segments: Array<{ label: string; value: number; color: string }>; total: number }) {
+  return (
+    <div className="stackedChart">
+      <div className="stackedBar">
+        {segments.map((segment) => (
+          <span key={segment.label} style={{ width: `${(segment.value / total) * 100}%`, background: segment.color }} />
+        ))}
+      </div>
+      <div className="chartLegend">
+        {segments.map((segment) => (
+          <span key={segment.label}>
+            {segment.label}: {segment.value}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniBars({ values }: { values: Record<string, number> }) {
+  const entries = Object.entries(values);
+  const max = Math.max(...entries.map(([, value]) => value), 1);
+  if (entries.length === 0) {
+    return <EmptyState label="No data yet" />;
+  }
+  return (
+    <div className="miniBars">
+      {entries.map(([label, value]) => (
+        <div key={label}>
+          <span>{titleize(label)}</span>
+          <div>
+            <i style={{ width: `${(value / max) * 100}%` }} />
+          </div>
+          <strong>{value}</strong>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -684,7 +1007,7 @@ function Meter({ label, value }: { label: string; value: number }) {
 }
 
 function StatusBadge({ value }: { value: string }) {
-  const kind = value.includes("block") ? "danger" : value.includes("manual") || value.includes("human") ? "warn" : "ok";
+  const kind = value.includes("block") || value.includes("fail") ? "danger" : value.includes("manual") || value.includes("human") || value.includes("not_run") ? "warn" : "ok";
   return <span className={classNames("statusBadge", kind)}>{titleize(value)}</span>;
 }
 

@@ -2,6 +2,8 @@
 
 Local FastAPI backend for an insurance claims agent governance workflow. It demonstrates agent recommendations routed through deterministic policy enforcement, risk scoring, prompt-injection detection, human approval routing, and SQLite audit logging.
 
+In Docker Compose, the backend uses PostgreSQL for persistence and Redis for trace/approval events. SQLite remains the default when `DATABASE_URL` is not set so tests and lightweight local development stay simple.
+
 ## Local LLM Support
 
 The backend can optionally use a local Ollama model for claim summarization, claim fact extraction summaries, policy clause summarization, and reasoning explanations. It never uses the LLM as the source of truth for governance decisions, risk scoring, prompt-injection blocking, final approval, final denial, or audit logging.
@@ -13,6 +15,16 @@ $env:LOCAL_LLM_MODEL="llama3.2:3b"
 ```
 
 If Ollama is unavailable, the system falls back to deterministic mock extraction and continues running.
+
+## Orchestration And Streaming
+
+Claim review runs through a LangGraph-compatible orchestration layer with deterministic fallback. Trace events are published to Redis when `REDIS_URL` is configured and exposed through:
+
+```text
+GET /audit-logs/{trace_id}/stream
+```
+
+The stream uses Server-Sent Events for real-time trace updates.
 
 ## Run Locally
 

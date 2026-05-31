@@ -1,16 +1,12 @@
-import json
 import uuid
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.agents.claim_decision_agent import recommend_claim_action
-from app.agents.claims_intake_agent import extract_claim_facts
-from app.agents.fraud_risk_agent import calculate_fraud_risk
-from app.agents.policy_retrieval_agent import retrieve_policy_evidence
 from app.database.audit_repository import create_approval, create_audit_log
 from app.database.db import get_db
 from app.governance.governance_gateway import evaluate_governance
+from app.orchestration.claim_workflow import run_claim_workflow
 from app.schemas.claim_schema import ClaimReviewRequest, ClaimReviewResponse
 
 router = APIRouter(prefix="/claims", tags=["claims"])
@@ -19,10 +15,11 @@ router = APIRouter(prefix="/claims", tags=["claims"])
 @router.post("/review", response_model=ClaimReviewResponse)
 def review_claim(request: ClaimReviewRequest, db: Session = Depends(get_db)) -> ClaimReviewResponse:
     trace_id = str(uuid.uuid4())
-    claim = extract_claim_facts(request.claim_text, request.claim_amount, request.claim_type, request.customer_id)
-    policy = retrieve_policy_evidence(request.claim_type, claim.incident_type)
-    fraud = calculate_fraud_risk(claim)
-    recommendation = recommend_claim_action(claim, policy, fraud)
+    workflow = run_claim_workflow(request.customer_id, request.claim_text, request.claim_type, request.claim_amount)
+    claim = workflow["claim"]
+    policy = workflow["policy"]
+    fraud = workflow["fraud"]
+    recommendation = workflow["recommendation"]
 
     governance = evaluate_governance(
         agent_name="claim_decision_agent",
@@ -49,7 +46,7 @@ def review_claim(request: ClaimReviewRequest, db: Session = Depends(get_db)) -> 
         user_request=request.model_dump(),
         agent_name="claim_decision_agent",
         action_requested=recommendation.recommended_action,
-        agent_output=json.loads(recommendation.model_dump_json()),
+        agent_output={**recommendation.model_dump(), "orchestration_engine": workflow["orchestration_engine"]},
         governance=governance,
         approval_status="pending" if approval_id else "not_required",
         final_status=final_status,

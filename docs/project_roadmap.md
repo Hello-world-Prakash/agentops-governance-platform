@@ -6,3 +6,4 @@
 - Add richer policy configuration.
 - Add LangGraph-compatible workflow orchestration.
 - Add exportable audit reports.
+- Add hosted deployment pipeline and environment-specific secrets management.

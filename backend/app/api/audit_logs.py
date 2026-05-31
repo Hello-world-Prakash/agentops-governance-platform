@@ -1,10 +1,12 @@
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database.audit_repository import get_audit_by_trace_id, list_audit_logs
 from app.database.db import get_db
+from app.events.event_bus import stream_trace_events
 
 router = APIRouter(prefix="/audit-logs", tags=["audit"])
 
@@ -40,3 +42,11 @@ def audit_log(trace_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Audit log not found")
     return _serialize(row)
 
+
+@router.get("/{trace_id}/stream")
+async def audit_log_stream(trace_id: str):
+    async def event_source():
+        async for event in stream_trace_events(trace_id):
+            yield f"event: {event['event_type']}\ndata: {json.dumps(event, default=str)}\n\n"
+
+    return StreamingResponse(event_source(), media_type="text/event-stream")

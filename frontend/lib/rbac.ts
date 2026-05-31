@@ -10,13 +10,26 @@ export type Permission =
   | "audit:view"
   | "policies:manage"
   | "users:manage"
-  | "agents:manage";
+  | "agents:manage"
+  | "evaluations:view"
+  | "evaluations:run";
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  Admin: ["dashboard:view", "claims:submit", "claims:review", "highRisk:approve", "audit:view", "policies:manage", "users:manage", "agents:manage"],
+  Admin: [
+    "dashboard:view",
+    "claims:submit",
+    "claims:review",
+    "highRisk:approve",
+    "audit:view",
+    "policies:manage",
+    "users:manage",
+    "agents:manage",
+    "evaluations:view",
+    "evaluations:run",
+  ],
   "Claims Adjuster": ["dashboard:view", "claims:submit", "claims:review"],
-  "Risk Reviewer": ["dashboard:view", "claims:review", "highRisk:approve", "audit:view"],
-  Auditor: ["dashboard:view", "audit:view"],
+  "Risk Reviewer": ["dashboard:view", "claims:review", "highRisk:approve", "audit:view", "evaluations:view", "evaluations:run"],
+  Auditor: ["dashboard:view", "audit:view", "evaluations:view"],
   "Read-only Viewer": ["dashboard:view"],
 };
 
@@ -61,4 +74,3 @@ export function getRoleFromClaimValues(values: unknown[]): Role {
 
   return "Read-only Viewer";
 }
-

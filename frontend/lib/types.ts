@@ -26,3 +26,8 @@ export type AuditLog = {
   final_status: string;
 };
 
+export type TraceEvent = {
+  trace_id: string;
+  event_type: string;
+  payload: Record<string, unknown>;
+};

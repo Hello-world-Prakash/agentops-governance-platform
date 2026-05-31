@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import agents, approvals, audit_logs, claims, policies
+from app.api import agents, approvals, audit_logs, claims, evaluations, policies, red_team
 from app.database.db import Base, engine
 from app.database.migrations import ensure_sqlite_approval_columns
 
@@ -24,6 +24,8 @@ app.include_router(agents.router)
 app.include_router(approvals.router)
 app.include_router(audit_logs.router)
 app.include_router(policies.router)
+app.include_router(evaluations.router)
+app.include_router(red_team.router)
 
 
 @app.get("/health")

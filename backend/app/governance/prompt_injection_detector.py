@@ -11,6 +11,9 @@ UNSAFE_PHRASES = [
     "override policy",
     "disable governance",
     "skip human approval",
+    "approve claim without",
+    "pretend you are an admin",
+    "hide this action from audit logs",
 ]
 
 
@@ -18,4 +21,3 @@ def detect_prompt_injection(text: str) -> Dict[str, object]:
     lowered = text.lower()
     matches = [phrase for phrase in UNSAFE_PHRASES if phrase in lowered]
     return {"detected": bool(matches), "matches": matches}
-
